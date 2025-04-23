@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 s = requests.Session()
-s.headers.update({'X-API-key': '84Z8YJ46'})
+s.headers.update({'X-API-key': 'competition-API-key'})
 
 MAX_LONG_EXPOSURE = 72000  # Maximum total number of shares allowed to be held long across all stocks
 MAX_SHORT_EXPOSURE = -72000  # Maximum total number of shares allowed to be held short across all stocks
