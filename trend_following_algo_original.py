@@ -1,18 +1,15 @@
-import requests  # used to make HTTP requests to the API
-from time import sleep  # pauses the program for a specified amount of time
+import requests
+from time import sleep
 import matplotlib.pyplot as plt
 import pandas as pd
-# numpy, pandas
 
-s = requests.Session()  # this initializes a session object that allows for HTTP requests to be made
-s.headers.update({'X-API-key': '84Z8YJ46'})  # updates the HTTP request JSON to include the correct API key
+s = requests.Session()
+s.headers.update({'X-API-key': '84Z8YJ46'})
 
-# global variables
 MAX_LONG_EXPOSURE = 72000  # Maximum total number of shares allowed to be held long across all stocks
 MAX_SHORT_EXPOSURE = -72000  # Maximum total number of shares allowed to be held short across all stocks
 ORDER_LIMIT = 1500  # maximum number of shares per order
 
-# =================== Added: Trend-Following Parameters ===================
 WINDOW_SIZE_SHORT = 5    # Short-term moving average window (number of ticks)
 WINDOW_SIZE_LONG = 20   # Long-term moving average window (number of ticks)
 PRICE_HISTORY = {        # Dictionary to store price history for each ticker
@@ -21,9 +18,8 @@ PRICE_HISTORY = {        # Dictionary to store price history for each ticker
     'DOVE': [],
     'DUCK': []
 }
-# ========================================================================
 
-def get_tick():
+def get_tick(): #the simulation runs on ticks (one per second for 600s)
     resp = s.get('http://localhost:9999/v1/case')
     if resp.ok:
         case = resp.json()
@@ -83,17 +79,15 @@ def get_order_status(order_id):
         order = resp.json()
         return order['status']
 
-# =================== Added: SMA Calculation Function ===================
 def calculate_sma(prices, window_size):
     if len(prices) >= window_size:
         return sum(prices[-window_size:]) / window_size
     else:
-        return None  # Not enough data to calculate SMA
-# ========================================================================
+        return None
 
-#this is so that i can base limit order off of how large the SMA change is
+# This is so that i can base limit order off of how large the SMA change is
 def SMA_Differences_ranking(ticker):
-    #This big if statement is just to make sure that the SMAs can actually be calculated for each stock
+    # This big if statement is just to make sure that the SMAs can actually be calculated for each stock
     if (len(PRICE_HISTORY['OWL']) < WINDOW_SIZE_LONG) or (len(PRICE_HISTORY['DOVE']) < WINDOW_SIZE_LONG) or (len(PRICE_HISTORY['CROW']) < WINDOW_SIZE_LONG) or (len(PRICE_HISTORY['DUCK']) < WINDOW_SIZE_LONG):
         return False
     OWL_diff = abs(calculate_sma(PRICE_HISTORY['OWL'], WINDOW_SIZE_LONG) - calculate_sma(PRICE_HISTORY['OWL'], WINDOW_SIZE_SHORT))
@@ -104,8 +98,6 @@ def SMA_Differences_ranking(ticker):
     SMA_Differences_values = sorted(list(SMA_Differences.values()))
     return (SMA_Differences[ticker] == SMA_Differences_values[-1]) or (SMA_Differences[ticker] == SMA_Differences_values[-2])
 
-
-
 def main():
     tick, status = get_tick()
     ticker_list = ['OWL', 'CROW', 'DOVE', 'DUCK']
@@ -114,34 +106,26 @@ def main():
 
         for i in range(4):  # this is range 4 because there are 4 tickers
             ticker_symbol = ticker_list[i]
-            position = get_position(ticker_symbol)  # Modified: Get position per ticker
-            best_bid_price, best_ask_price = get_bid_ask(ticker_symbol)  # gets bid and ask price for current ticker
+            position = get_position(ticker_symbol)
+            best_bid_price, best_ask_price = get_bid_ask(ticker_symbol)
 
             if best_bid_price is None or best_ask_price is None:  # Added: Skip if prices are not available
                 continue
 
-            # =================== Added: Calculate Mid-Price ===================
+            # Mid price
             current_price = (best_bid_price + best_ask_price) / 2
-            # ====================================================================
 
-            # =================== Added: Update Price History ===================
+            # Update Price History
             PRICE_HISTORY[ticker_symbol].append(current_price)
-            # ====================================================================
 
-            # =================== Added: Calculate SMAs ==========================
             short_sma = calculate_sma(PRICE_HISTORY[ticker_symbol], WINDOW_SIZE_SHORT)
             long_sma = calculate_sma(PRICE_HISTORY[ticker_symbol], WINDOW_SIZE_LONG)
-            # ====================================================================
 
-            if short_sma is None or long_sma is None:  # Added: Check if SMAs can be calculated
+            if short_sma is None or long_sma is None:  # Check if SMAs can be calculated
                 continue
-
-            # =================== Added: Generate Trade Signals ===================
             
-            if short_sma > long_sma:
-                # Buy Signal
-                
-
+            if short_sma > long_sma: # Buy Signal 
+                            
                 if position < MAX_LONG_EXPOSURE:
                     if position >= 0.66*MAX_LONG_EXPOSURE: # gets program to slow down as we reach individual long_exposure limit
                         quantity = min(750, MAX_LONG_EXPOSURE - position)
@@ -151,7 +135,7 @@ def main():
                         else:
                             quantity = min(750, MAX_LONG_EXPOSURE - position)
                     
-                    elif SMA_Differences_ranking(ticker_symbol) == True: #if there is a larger difference in the moving averages with this specific ticker (compared to the others) we take a larger position
+                    elif SMA_Differences_ranking(ticker_symbol) == True: # if there is a larger difference in the moving averages with this specific ticker (compared to the others) we take a larger position
                         quantity = min(5000, MAX_LONG_EXPOSURE - position)
                     else:
                         quantity = min(ORDER_LIMIT, MAX_LONG_EXPOSURE - position)
@@ -201,13 +185,12 @@ def main():
         sleep(0.75) #so program only runs once per tick
         tick, status = get_tick()
 
-    # Define y-values for each graph
-    y_values1 = PRICE_HISTORY['OWL']  # Graph 1
-    y_values2 = PRICE_HISTORY['CROW']   # Graph 2
-    y_values3 = PRICE_HISTORY['DOVE']  # Graph 3
+    y_values1 = PRICE_HISTORY['OWL']  
+    y_values2 = PRICE_HISTORY['CROW']
+    y_values3 = PRICE_HISTORY['DOVE']
     y_values4 = PRICE_HISTORY['DUCK']
 
-    # First graph
+    # First Ticker graph
     plt.figure(1)
     plt.plot(y_values1, label="Graph 1", color="blue")
     plt.title("OWL")
@@ -215,7 +198,7 @@ def main():
     plt.ylabel("Avg Price")
     plt.legend()
 
-    # Second graph
+    # Second Ticker graph
     plt.figure(2)
     plt.plot(y_values2, label="Graph 2", color="green")
     plt.title("CROW")
@@ -223,7 +206,7 @@ def main():
     plt.ylabel("Avg Price")
     plt.legend()
 
-    # Third graph
+    # Third Ticker graph
     plt.figure(3)
     plt.plot(y_values3, label="Graph 3", color="red")
     plt.title("DOVE")
@@ -231,7 +214,7 @@ def main():
     plt.ylabel("Avg Price")
     plt.legend()
 
-    # Fourth graph
+    # Fourth Ticker graph
     plt.figure(4)
     plt.plot(y_values4, label="Graph 4", color="yellow")
     plt.title("DUCK")
@@ -239,11 +222,8 @@ def main():
     plt.ylabel("Avg Price")
     plt.legend()
 
-
     # Show all graphs
     plt.show()
-
-
 
 if __name__ == '__main__':
     main()
